@@ -66,14 +66,15 @@ app.post("/Create", async (req, res) => {
   const filePath = req.files[0];
 
   try {
-    const imageUrl = await cloudinary.uploader.upload(filePath.path);
+    let imageUrl = null;
+    if (filePath) imageUrl = await cloudinary.uploader.upload(filePath?.path);
 
     const verified = jwt.verify(authKey, jwtKey);
     if (!!verified) {
       const PostData = await PostDoc.create({
         postName,
         content,
-        image: imageUrl.url,
+        image: imageUrl && imageUrl?.url,
         user: userId,
       });
       res.json(PostData).status(200);
@@ -85,10 +86,12 @@ app.post("/Create", async (req, res) => {
 });
 app.get("/", async (req, res) => {
   try {
-    const postData = await PostDoc.find({}).populate({
-      path: "user",
-      select: "name email image ",
-    }).sort({date : -1});
+    const postData = await PostDoc.find({})
+      .populate({
+        path: "user",
+        select: "name email image ",
+      })
+      .sort({ date: -1 });
     res.json(postData).status(200);
   } catch (e) {
     console.log(e);
