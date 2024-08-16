@@ -62,14 +62,18 @@ app.get("/Delete", async (req, res) => {
 
 //post create route
 app.post("/Create", async (req, res) => {
+  const { postName, content, authKey, userId } = req.body;
+  const filePath = req.files[0];
+
   try {
-    const { postName, content, authKey, userId } = req.body;
+    const imageUrl = await cloudinary.uploader.upload(filePath.path);
 
     const verified = jwt.verify(authKey, jwtKey);
     if (!!verified) {
       const PostData = await PostDoc.create({
         postName,
         content,
+        image: imageUrl.url,
         user: userId,
       });
       res.json(PostData).status(200);
@@ -110,7 +114,6 @@ app.post("/like", async (req, res) => {
   }
   res.json(response);
 });
-
 
 app.listen(PORT, () => {
   console.log("connected to server");
