@@ -88,7 +88,7 @@ app.get("/", async (req, res) => {
     const postData = await PostDoc.find({}).populate({
       path: "user",
       select: "name email image ",
-    });
+    }).sort({date : -1});
     res.json(postData).status(200);
   } catch (e) {
     console.log(e);
