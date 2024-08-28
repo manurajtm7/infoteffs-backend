@@ -84,6 +84,49 @@ app.post("/Create", async (req, res) => {
     res.status(400);
   }
 });
+
+app.delete("/user/post/delete", async (req, res) => {
+  const { postId, authKey, userId } = req.body;
+  console.log(postId);
+
+  const verified = jwt.verify(authKey, jwtKey);
+  if (!!verified) {
+    try {
+      const response = await PostDoc.findOneAndDelete({
+        _id: postId,
+      });
+
+      if (response) res.json("successfully deleted a post");
+      else throw new Error("Error while deleting post");
+    } catch (e) {
+      console.log(e);
+      res.sendStatus(400);
+    }
+  } else res.sendStatus(400);
+});
+
+app.post("/user/account", async (req, res) => {
+  const { authKey, userId } = req.body;
+
+  const verified = jwt.verify(authKey, jwtKey);
+  if (!!verified) {
+    const userDetail = await UserDoc.findById({
+      _id: new mongoose.Types.ObjectId(userId),
+    });
+
+    const posts = await PostDoc.find({
+      user: new mongoose.Types.ObjectId(userId),
+    });
+
+    if (userDetail) {
+      res.json({
+        userDetail,
+        posts,
+      });
+    }
+  } else res.sendStatus(400);
+});
+
 app.get("/", async (req, res) => {
   try {
     const postData = await PostDoc.find({})
