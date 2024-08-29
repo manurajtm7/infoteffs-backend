@@ -44,13 +44,17 @@ app.post("/Register", async (req, res) => {
 
 app.post("/Login", async (req, res) => {
   const { email, password } = req.body;
-  const userLog = await UserDoc.findOne({ email, password });
+  try {
+    const userLog = await UserDoc.findOne({ email, password });
 
-  if (userLog) {
-    const authKey = jwt.sign({ email, password }, jwtKey);
-    res.json({ authKey, userId: userLog._id }).status(200);
-  } else {
-    res.status(400).json(0);
+    if (userLog) {
+      const authKey = jwt.sign({ email, password }, jwtKey);
+      res.json({ authKey, userId: userLog._id }).status(200);
+    } else {
+      res.status(400).json(0);
+    }
+  } catch (err) {
+    res.status(501).json(0);
   }
 });
 
@@ -108,23 +112,28 @@ app.delete("/user/post/delete", async (req, res) => {
 app.post("/user/account", async (req, res) => {
   const { authKey, userId } = req.body;
 
-  const verified = jwt.verify(authKey, jwtKey);
-  if (!!verified) {
-    const userDetail = await UserDoc.findById({
-      _id: new mongoose.Types.ObjectId(userId),
-    });
-
-    const posts = await PostDoc.find({
-      user: new mongoose.Types.ObjectId(userId),
-    });
-
-    if (userDetail) {
-      res.json({
-        userDetail,
-        posts,
+  try {
+    const verified = jwt.verify(authKey, jwtKey);
+    if (!!verified) {
+      const userDetail = await UserDoc.findById({
+        _id: new mongoose.Types.ObjectId(userId),
       });
-    }
-  } else res.sendStatus(400);
+
+      const posts = await PostDoc.find({
+        user: new mongoose.Types.ObjectId(userId),
+      });
+
+      if (userDetail) {
+        res.json({
+          userDetail,
+          posts,
+        });
+      }
+    } else res.sendStatus(400);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(401);
+  }
 });
 
 app.get("/", async (req, res) => {
