@@ -32,9 +32,14 @@ app.post("/Register", async (req, res) => {
   try {
     const imageUrl = await cloudinary.uploader.upload(filePath.path);
 
-    await UserDoc.create({ name, email, password, image: imageUrl.url });
+    const userData = await UserDoc.create({
+      name,
+      email,
+      password,
+      image: imageUrl.url,
+    });
     const authKey = jwt.sign({ name, email, password }, jwtKey);
-    res.json(authKey).status(200);
+    res.json({ authKey, userId: userData._id }).status(200);
   } catch (e) {
     res.status(400);
   }
@@ -44,6 +49,7 @@ app.post("/Register", async (req, res) => {
 
 app.post("/Login", async (req, res) => {
   const { email, password } = req.body;
+
   try {
     const userLog = await UserDoc.findOne({ email, password });
 
@@ -91,7 +97,6 @@ app.post("/Create", async (req, res) => {
 
 app.delete("/user/post/delete", async (req, res) => {
   const { postId, authKey, userId } = req.body;
-  console.log(postId);
 
   const verified = jwt.verify(authKey, jwtKey);
   if (!!verified) {
@@ -114,6 +119,7 @@ app.post("/user/account", async (req, res) => {
 
   try {
     const verified = jwt.verify(authKey, jwtKey);
+
     if (!!verified) {
       const userDetail = await UserDoc.findById({
         _id: new mongoose.Types.ObjectId(userId),
