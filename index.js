@@ -157,23 +157,31 @@ app.get("/", async (req, res) => {
   }
 });
 
+//! currently working
+
 app.post("/like", async (req, res) => {
-  const data = req.body;
-  let response;
-  if (!data.likeState) {
-    response = await PostDoc.findByIdAndUpdate(
-      { _id: data.postId },
-      { $inc: { like: 1 } },
-      { new: true }
-    );
-  } else {
-    response = await PostDoc.findByIdAndUpdate(
-      { _id: data.postId },
-      { $inc: { like: -1 } },
-      { new: true }
-    );
+  const { postId, likeState, userId } = req.body;
+
+  try {
+    let response;
+
+    if (!likeState) {
+      response = await PostDoc.findByIdAndUpdate(
+        { _id: new mongoose.Types.ObjectId(postId) },
+        { $push: { likes: userId } },
+        { new: true }
+      );
+    } else {
+      response = await PostDoc.findByIdAndUpdate(
+        { _id: new mongoose.Types.ObjectId(postId) },
+        { $pull: { likes: userId } }
+      );
+    }
+    res.json(response).status(200);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(500);
   }
-  res.json(response);
 });
 
 app.listen(PORT, () => {

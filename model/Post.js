@@ -5,6 +5,7 @@ const postSchema = new mongoose.Schema({
   content: { type: String, required: true, min: 3 },
   image: { type: String, required: false, min: 3 },
   like: { type: Number, default: 0 },
+  likes: [{ type: String }],
   user: { type: mongoose.Schema.ObjectId, ref: "user" },
   date: { type: Date, default: Date.now() },
 });
