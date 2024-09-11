@@ -87,11 +87,12 @@ app.post("/Create", async (req, res) => {
         image: imageUrl && imageUrl?.url,
         user: userId,
       });
-      res.json(PostData).status(200);
+      if (PostData) res.json(PostData).status(200);
+      else throw new Error("Error while adding posting");
     }
   } catch (e) {
     console.log(e);
-    res.status(400);
+    res.status(500);
   }
 });
 
@@ -127,7 +128,7 @@ app.post("/user/account", async (req, res) => {
 
       const posts = await PostDoc.find({
         user: new mongoose.Types.ObjectId(userId),
-      });
+      }).sort({ date: -1 });
 
       if (userDetail) {
         res.json({
@@ -150,6 +151,7 @@ app.get("/", async (req, res) => {
         select: "name email image ",
       })
       .sort({ date: -1 });
+
     res.json(postData).status(200);
   } catch (e) {
     console.log(e);
