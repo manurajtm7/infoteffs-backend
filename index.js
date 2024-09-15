@@ -143,6 +143,25 @@ app.post("/user/account", async (req, res) => {
   }
 });
 
+app.put("/user/update", async (req, res) => {
+  const { name, tag, userId } = req.body;
+
+  try {
+    const response = await UserDoc.findByIdAndUpdate(
+      { _id: new mongoose.Types.ObjectId(userId) },
+      { name, tags: tag }
+    );
+
+    if (response) {
+      res.status(200).json({ message: "User detail updated successfully" });
+    } else throw new Error("Error while updaing user details");
+  } catch (err) {
+    console.log(err);
+
+    res.status(500).json({ message: "Error while updating the user details" });
+  }
+});
+
 app.get("/", async (req, res) => {
   try {
     const postData = await PostDoc.find({})

@@ -20,6 +20,7 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now(),
   },
+  tags: String,
 });
 
 const UserDoc = mongoose.model("user", UserSchema);
