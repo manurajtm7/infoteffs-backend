@@ -9,6 +9,7 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const UserDoc = require("./model/User");
 const PostDoc = require("./model/Post");
+const { useFilterTags } = require("./utils/TagFilter");
 const upload = multer({ dest: "./uploads" });
 app.use(cors());
 app.use(express.json());
@@ -22,8 +23,6 @@ cloudinary.config({
   api_key: process.env.api_key,
   api_secret: process.env.api_secret,
 });
-
-const PORT = 4000 || process.env.PORT;
 
 app.post("/Register", async (req, res) => {
   const { name, email, password } = req.body;
@@ -162,6 +161,80 @@ app.put("/user/update", async (req, res) => {
   }
 });
 
+app.put("/user/update/profile", async (req, res) => {
+  const image = req.files[0];
+  const { user_id, auth_key } = req.body;
+
+  if (!image) res.status(404).json("Image not found");
+
+  try {
+    if (jwt.verify(auth_key, jwtKey)) {
+      const preResponse = await UserDoc.findById({
+        _id: new mongoose.Types.ObjectId(user_id),
+      });
+
+      if (preResponse.image) {
+        let public_id = preResponse.image.split("/").at(-1).split(".")[0];
+        cloudinary.uploader.destroy(public_id, (err, res) => {
+          if (err) {
+            console.log(err);
+          } else console.log("deleted successfully", res);
+        });
+      }
+
+      const uploadImage = await cloudinary.uploader.upload(image?.path);
+      const profileUpdate = await UserDoc.findByIdAndUpdate(
+        {
+          _id: new mongoose.Types.ObjectId(user_id),
+        },
+        {
+          image: uploadImage.url,
+        }
+      );
+
+      res.status(200).json({ message: "profile updated successfully" });
+    }
+  } catch (Err) {
+    console.log(Err);
+
+    res.status(500).json("Error" + Err);
+  }
+});
+
+app.get("/user/feed", async (req, res) => {
+  const { userId } = req.body;
+  try {
+    const { tags } = await UserDoc.findOne({
+      _id: new mongoose.Types.ObjectId(userId),
+    });
+
+    const FormattedUserTags = useFilterTags(tags);
+
+    const posts = await PostDoc.find({})
+      .populate({
+        path: "user",
+        select: "name email image tags ",
+      })
+      .sort({ date: -1 });
+
+    // const personalizedPosts = posts.filter((post) => {
+    //   const filteredData = useFilterTags(post?.user?.tags);
+    //   console.log(" ---- ----- ----" , filteredData);
+
+    //   // const formattedPostTags = filteredData.filter((tags) => {
+    //   //   return
+    //   // })
+
+    //   return filteredData;
+    // });
+
+    console.log(personalizedPosts);
+    res.status(200);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
 app.get("/", async (req, res) => {
   try {
     const postData = await PostDoc.find({})
@@ -205,6 +278,7 @@ app.post("/like", async (req, res) => {
   }
 });
 
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log("connected to server");
 });
