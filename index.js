@@ -101,6 +101,18 @@ app.delete("/user/post/delete", async (req, res) => {
   const verified = jwt.verify(authKey, jwtKey);
   if (!!verified) {
     try {
+      const post = await PostDoc.findById({
+        _id: new mongoose.Types.ObjectId(postId),
+      });
+
+      if (post.image) {
+        let public_id = post.image.split("/").at(-1).split(".")[0];
+        cloudinary.uploader.destroy(public_id, (err, res) => {
+          if (err) console.log(err);
+          else console.log(res);
+        });
+      }
+
       const response = await PostDoc.findOneAndDelete({
         _id: postId,
       });
