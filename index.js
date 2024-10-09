@@ -15,7 +15,9 @@ app.use(cors());
 app.use(express.json());
 app.use(upload.any());
 
-mongoose.connect(process.env.CONNECTION_STR);
+mongoose.connect(process.env.CONNECTION_STR).then(() => {
+  console.log("mongodb connected!");
+});
 
 const jwtKey = process.env.jwtKey;
 cloudinary.config({
@@ -213,35 +215,39 @@ app.put("/user/update/profile", async (req, res) => {
   }
 });
 
-app.get("/user/feed", async (req, res) => {
+//! working on feed !
+app.post("/user/feeds", async (req, res) => {
   const { userId } = req.body;
   try {
-    const { tags } = await UserDoc.findOne({
+    const userData = await UserDoc.findOne({
       _id: new mongoose.Types.ObjectId(userId),
     });
+    console.log(userData?.tags);
 
-    const FormattedUserTags = useFilterTags(tags);
+    if (!userData?.tags) {
+      res.status(200);
+      return;
+    }
 
-    const posts = await PostDoc.find({})
+    const FormattedUserTags = useFilterTags(userData.tags).join("|");
+
+    const posts = await PostDoc.find({
+      $or: [
+        {
+          content: { $regex: FormattedUserTags, $options: "i" },
+        },
+        {
+          postName: { $regex: FormattedUserTags, $options: "i" },
+        },
+      ],
+    })
       .populate({
         path: "user",
         select: "name email image tags ",
       })
       .sort({ date: -1 });
 
-    // const personalizedPosts = posts.filter((post) => {
-    //   const filteredData = useFilterTags(post?.user?.tags);
-    //   console.log(" ---- ----- ----" , filteredData);
-
-    //   // const formattedPostTags = filteredData.filter((tags) => {
-    //   //   return
-    //   // })
-
-    //   return filteredData;
-    // });
-
-    console.log(personalizedPosts);
-    res.status(200);
+    res.status(200).json({ feeds: posts });
   } catch (err) {
     console.log(err);
   }
