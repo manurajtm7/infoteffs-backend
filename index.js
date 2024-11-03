@@ -156,6 +156,37 @@ app.post("/user/account", async (req, res) => {
   }
 });
 
+//? todo
+
+app.post("/user/profile/:id", async (req, res) => {
+  const { authKey, userId } = req.body;
+  const findUserId = req.params.id.split(":")[1];
+
+  try {
+    const verified = jwt.verify(authKey, jwtKey);
+
+    if (!!verified) {
+      const userDetail = await UserDoc.findById({
+        _id: new mongoose.Types.ObjectId(findUserId),
+      });
+
+      const posts = await PostDoc.find({
+        user: new mongoose.Types.ObjectId(userDetail?._id),
+      }).sort({ date: -1 });
+
+      if (userDetail) {
+        res.json({
+          userDetail,
+          posts,
+        });
+      }
+    } else res.sendStatus(400);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(401);
+  }
+});
+
 app.put("/user/update", async (req, res) => {
   const { name, tag, userId } = req.body;
 
@@ -222,7 +253,6 @@ app.post("/user/feeds", async (req, res) => {
     const userData = await UserDoc.findOne({
       _id: new mongoose.Types.ObjectId(userId),
     });
-    console.log(userData?.tags);
 
     if (!userData?.tags) {
       res.status(200);
@@ -293,6 +323,26 @@ app.post("/like", async (req, res) => {
   } catch (err) {
     console.log(err);
     res.sendStatus(500);
+  }
+});
+
+// user list or peoples
+
+app.post("/peoples", async (req, res) => {
+  const { authKey, userId } = req.body;
+
+  try {
+    if (jwt.verify(authKey, jwtKey)) {
+      const users = await UserDoc.find({}).select("name email image");
+
+      if (users) {
+        res.status(200).json({ data: users });
+      }
+    } else {
+      res.status(401).json("unauthorized");
+    }
+  } catch (err) {
+    res.status(500).json({ message: "Error while fetching!" });
   }
 });
 
