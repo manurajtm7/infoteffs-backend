@@ -10,6 +10,7 @@ const mongoose = require("mongoose");
 const UserDoc = require("./model/User");
 const PostDoc = require("./model/Post");
 const { useFilterTags } = require("./utils/TagFilter");
+const CommentModel = require("./model/Comment");
 const upload = multer({ dest: "./uploads" });
 app.use(cors());
 app.use(express.json());
@@ -228,6 +229,7 @@ app.put("/user/update/profile", async (req, res) => {
       }
 
       const uploadImage = await cloudinary.uploader.upload(image?.path);
+
       const profileUpdate = await UserDoc.findByIdAndUpdate(
         {
           _id: new mongoose.Types.ObjectId(user_id),
@@ -343,6 +345,54 @@ app.post("/peoples", async (req, res) => {
     }
   } catch (err) {
     res.status(500).json({ message: "Error while fetching!" });
+  }
+});
+
+app.post("/posts/comment/create", async (req, res) => {
+  const { authKey, userId, postId, comment } = req.body;
+
+  try {
+    if (jwt.verify(authKey, jwtKey)) {
+      const commentCrd = await CommentModel.create({
+        postId: new mongoose.Types.ObjectId(postId),
+        userId: new mongoose.Types.ObjectId(userId),
+        comment,
+      });
+
+      if (commentCrd) {
+        res.status(200).json({ message: "comment added successfully" });
+      } else {
+        res.status(400).json({ message: "Error while adding comment" });
+      }
+    } else throw new Error("User validation failed");
+  } catch (err) {
+    res.status(401).json({ message: err });
+  }
+});
+
+app.post("/posts/comment/view", async (req, res) => {
+  const { authKey, postId } = req.body;
+
+  try {
+    if (jwt.verify(authKey, jwtKey)) {
+      const comments = await CommentModel.find({
+        postId: new mongoose.Types.ObjectId(postId),
+      })
+        .populate({
+          path: "userId",
+          select: "name image",
+        })
+        .sort({ createdAt: -1 });
+
+      if (comments) {
+        res.status(200).json({ data: comments });
+      } else {
+        res.status(400).json({ message: "Error while fetching comments" });
+      }
+    } else throw new Error("User validation failed");
+  } catch (err) {
+    console.log(err);
+    res.status(401).json({ message: err });
   }
 });
 
