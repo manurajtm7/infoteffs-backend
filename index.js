@@ -29,21 +29,27 @@ cloudinary.config({
 
 app.post("/Register", async (req, res) => {
   const { name, email, password } = req.body;
-  const filePath = req.files[0];
 
   try {
-    const imageUrl = await cloudinary.uploader.upload(filePath.path);
+    let imageUrl = null;
+    const filePath = req.files[0];
+
+    if (filePath) {
+      imageUrl = await cloudinary.uploader.upload(filePath?.path);
+    }
 
     const userData = await UserDoc.create({
       name,
       email,
       password,
-      image: imageUrl.url,
+      image: imageUrl ? imageUrl?.url : null,
     });
+
     const authKey = jwt.sign({ name, email, password }, jwtKey);
     res.json({ authKey, userId: userData._id }).status(200);
   } catch (e) {
-    res.status(400);
+    console.log(e);
+    res.sendStatus(400);
   }
 });
 
