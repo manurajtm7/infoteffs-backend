@@ -4,6 +4,8 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
+const NodeCache = require("node-cache");
+
 require("dotenv").config();
 
 const mongoose = require("mongoose");
@@ -12,6 +14,11 @@ const PostDoc = require("./model/Post");
 const { useFilterTags } = require("./utils/TagFilter");
 const CommentModel = require("./model/Comment");
 const upload = multer({ dest: "./uploads" });
+
+const nodeCache = new NodeCache({
+  stdTTL: 60,
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(upload.any());
@@ -83,6 +90,8 @@ app.post("/Create", async (req, res) => {
   const { postName, content, authKey, userId } = req.body;
   const filePath = req.files[0];
 
+  nodeCache.del("posts");
+
   try {
     let imageUrl = null;
     if (filePath) imageUrl = await cloudinary.uploader.upload(filePath?.path);
@@ -106,6 +115,7 @@ app.post("/Create", async (req, res) => {
 
 app.delete("/user/post/delete", async (req, res) => {
   const { postId, authKey, userId } = req.body;
+  nodeCache.del("posts");
 
   const verified = jwt.verify(authKey, jwtKey);
   if (!!verified) {
@@ -196,6 +206,7 @@ app.post("/user/profile/:id", async (req, res) => {
 
 app.put("/user/update", async (req, res) => {
   const { name, tag, userId } = req.body;
+  nodeCache.del("posts");
 
   try {
     const response = await UserDoc.findByIdAndUpdate(
@@ -216,6 +227,7 @@ app.put("/user/update", async (req, res) => {
 app.put("/user/update/profile", async (req, res) => {
   const image = req.files[0];
   const { user_id, auth_key } = req.body;
+  nodeCache.del("posts");
 
   if (!image) res.status(404).json("Image not found");
 
@@ -291,16 +303,25 @@ app.post("/user/feeds", async (req, res) => {
   }
 });
 
+// get all the posts
+
 app.get("/", async (req, res) => {
   try {
-    const postData = await PostDoc.find({})
-      .populate({
-        path: "user",
-        select: "name email image ",
-      })
-      .sort({ date: -1 });
+    let postData;
 
-    res.json(postData).status(200);
+    if (nodeCache.get("posts")) {
+      let dataCachedPosts = nodeCache.get("posts");
+      res.json(dataCachedPosts).status(200);
+    } else {
+      postData = await PostDoc.find({})
+        .populate({
+          path: "user",
+          select: "name email image ",
+        })
+        .sort({ date: -1 });
+      nodeCache.set("posts", postData);
+      res.json(postData).status(200);
+    }
   } catch (e) {
     console.log(e);
     res.status(400);
@@ -310,9 +331,12 @@ app.get("/", async (req, res) => {
 //! currently working
 
 app.post("/like", async (req, res) => {
-  const { postId, likeState, userId } = req.body;
+  const { postId, likeState, userId, authKey } = req.body;
+  nodeCache.del("posts");
 
   try {
+    if (!jwt.verify(authKey, jwtKey)) throw new Error("Authorization failed");
+
     let response;
 
     if (!likeState) {
@@ -330,7 +354,7 @@ app.post("/like", async (req, res) => {
     res.json(response).status(200);
   } catch (err) {
     console.log(err);
-    res.sendStatus(500);
+    res.sendStatus(401);
   }
 });
 
@@ -356,6 +380,7 @@ app.post("/peoples", async (req, res) => {
 
 app.post("/posts/comment/create", async (req, res) => {
   const { authKey, userId, postId, comment } = req.body;
+  nodeCache.del("posts");
 
   try {
     if (jwt.verify(authKey, jwtKey)) {
